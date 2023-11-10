@@ -2,6 +2,7 @@ import { randomBytes } from "crypto"
 import { formatTime, md5, randomString } from "./constants"
 import axios from "axios";
 import { aesDecrypt, aesEncrypt, encryptPKCS1 } from "./algo";
+import { platform } from "os";
 
 
 function generateImei() {
@@ -286,6 +287,17 @@ export type Apk = {
 const mobile: Apk[] = [
     // 每个版本不同的信息
     {
+        name: "A8.9.88.46a07457",
+        version: "8.9.88.13035",
+        ver: "8.9.88",
+        buildtime: 1697015435,
+        subid: 537182769,
+        bitmap: 150470524,
+        sdkver: "6.0.0.2556",
+        qua: 'V1_AND_SQ_8.9.88_4852_YYB_D',
+        ssover: 21,
+    },
+    {
         name: "A8.9.85.3377f9bf",
         version: "8.9.85.12820",
         ver: "8.9.85",
@@ -421,6 +433,10 @@ const mobile: Apk[] = [
     }
 })
 const aPadSubids = [
+    {
+        ver: '8.9.88',
+        subid: 537182808,
+    },
     {
         ver: '8.9.85',
         subid: 537180607,
@@ -600,6 +616,7 @@ const apklist: { [platform in Platform]: Apk | Apk[] } = {
 }
 
 export function getApkInfo(p: Platform, ver?: string): Apk {
+    if (p == Platform.iPad) p = Platform.aPad
     const apks = apklist[p]
     if (Array.isArray(apks)) return apks.find(a => a.ver === ver) || apks[0]
     return apks as Apk

@@ -183,7 +183,7 @@ export class BaseClient extends Trapper {
   constructor(p: Platform = Platform.Android, d: ShortDevice, public config: Required<Config>) {
     super()
     if (config.log_config) log4js.configure(config.log_config as string)
-    this.apk = getApkInfo(p, config.ver)
+    this.apk = this.getApkInfo(p, config.ver)
     this.device = new Device(this.apk, d)
     this[NET].on("error", err => this.emit("internal.verbose", err.message, VerboseLevel.Error))
     this[NET].on("close", () => {
@@ -235,6 +235,7 @@ export class BaseClient extends Trapper {
       module = await import('./qsign')
     } else {
       module = await import('./sign')
+      this.getCmdWhiteList = module.getCmdWhiteList.bind(this)
     }
     this.getApiQQVer = module.getApiQQVer.bind(this)
     this.getT544 = module.getT544.bind(this)
@@ -264,6 +265,10 @@ export class BaseClient extends Trapper {
   /** 是否为在线状态 (可以收发业务包的状态) */
   isOnline() {
     return this[IS_ONLINE]
+  }
+
+  getApkInfo(p: Platform, ver?: string) {
+    return getApkInfo(p, ver)
   }
 
   buildReserveFields(cmd: string, sec_info: any) {
@@ -310,7 +315,7 @@ export class BaseClient extends Trapper {
     const old_ver = this.config.ver;
     this.config.ver = !ver ? await this.getApiQQVer() : ver;
     if (old_ver != this.config.ver) {
-      const new_apk = getApkInfo(this.config.platform, this.config.ver);
+      const new_apk = this.getApkInfo(this.config.platform, this.config.ver);
       if (new_apk.ver === this.config.ver) {
         Object.defineProperty(this, "apk", { writable: true });
         this.apk = new_apk;
@@ -320,6 +325,15 @@ export class BaseClient extends Trapper {
       }
     }
     return false;
+  }
+
+  async updateCmdWhiteList() {
+    let list = await this.getCmdWhiteList();
+    if (list?.length) this.signCmd = Array.from(new Set(this.signCmd.concat(list)));
+  }
+
+  async getCmdWhiteList() {
+    return [];
   }
 
   async getApiQQVer() {
@@ -1477,6 +1491,7 @@ function decodeLoginResponse(this: BaseClient, payload: Buffer): any {
     return register.call(this).then(async (err) => {
       if (this[IS_ONLINE]) {
         this.sig.retry_num = 0
+        await this.updateCmdWhiteList()
         await this.ssoPacketListHandler(null)
         this.emit("internal.online", token, nickname, gender, age)
       } else if (err === 1) {
